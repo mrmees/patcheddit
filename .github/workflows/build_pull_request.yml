@@ -26,10 +26,12 @@ jobs:
       - name: Build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :patches:buildAndroid --no-daemon
+        run: ./gradlew :patches:buildAndroid generatePatchesList --no-daemon
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: patcheddit
-          path: patches/build/libs
+          path: |
+            patches/build/libs
+            patches-list.json
