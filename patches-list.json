@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "patches": [
     {
       "name": "Add archive links to context menu",
@@ -270,6 +270,18 @@
       "options": []
     },
     {
+      "name": "Fix slow Giphy loading",
+      "description": "Bypasses Boost's slow Giphy API resolver and uses Boost's direct media.giphy.com MP4 fallback for Giphy posts.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.rubenmayayo.reddit": [
+          "1.12.12"
+        ]
+      },
+      "options": []
+    },
+    {
       "name": "Fix video downloads",
       "description": "Fixes a bug in Sync's MPD parser resulting in only the audio-track being saved.",
       "use": true,
@@ -404,6 +416,20 @@
         ],
         "com.laurencedawson.reddit_sync.pro": null,
         "com.laurencedawson.reddit_sync.dev": null
+      },
+      "options": []
+    },
+    {
+      "name": "Show inline Giphy previews in comments",
+      "description": "Adds inline animated Giphy previews below Boost comment text for Reddit Giphy markdown and Giphy links.",
+      "use": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.rubenmayayo.reddit": [
+          "1.12.12"
+        ]
       },
       "options": []
     },
