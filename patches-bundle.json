@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-06-26T22:18:42Z",
+  "created_at": "2026-06-26T22:20:21",
   "description": "Patcheddit fork release with upstream Boost fixes for direct MPD audio downloads, faster Giphy loading, and inline Giphy/direct GIF comment previews.",
   "download_url": "https://github.com/mrmees/patcheddit/releases/download/v1.4.1/patches-1.4.1.mpp",
   "signature_download_url": "",
