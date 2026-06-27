@@ -3,12 +3,13 @@ package app.morphe.extension.boostforreddit.giphy;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.app.Activity;
+import android.os.Parcelable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -89,7 +90,7 @@ public final class InlineGiphyCommentPreview {
             LinearLayout container = new LinearLayout(context);
             container.setTag(PREVIEW_TAG);
             container.setOrientation(LinearLayout.VERTICAL);
-            container.setPadding(0, dp(context, 6), 0, dp(context, 4));
+            container.setPadding(0, 0, 0, dp(context, 4));
 
             ImageView imageView = new ImageView(context);
             imageView.setAdjustViewBounds(true);
@@ -102,37 +103,21 @@ public final class InlineGiphyCommentPreview {
 
             container.addView(imageView, imageParams);
 
-            TextView label = new TextView(context);
-            label.setText("Source: " + sourceUrl);
-            label.setTextSize(10f);
-            label.setAlpha(0.65f);
-            label.setSingleLine(true);
-
-            container.addView(label, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            ));
-
-            View.OnClickListener sourceClickListener = new View.OnClickListener() {
+            View.OnClickListener previewClickListener = new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl));
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        view.getContext().startActivity(intent);
-                    } catch (Throwable throwable) {
+                    if (!openNativeGifViewer(view.getContext(), gifUrl, sourceUrl)) {
+                        openExternal(view.getContext(), sourceUrl);
                     }
                 }
             };
 
-            container.setClickable(false);
-            container.setFocusable(false);
-            imageView.setClickable(false);
-            imageView.setFocusable(false);
-            label.setClickable(true);
-            label.setFocusable(true);
-
-            label.setOnClickListener(sourceClickListener);
+            container.setClickable(true);
+            container.setFocusable(true);
+            imageView.setClickable(true);
+            imageView.setFocusable(true);
+            container.setOnClickListener(previewClickListener);
+            imageView.setOnClickListener(previewClickListener);
 
             if (!insertBelowCommentText(holder, (ViewGroup) itemView, container)) return;
             loadWithGlide(context, glideRequestManager, gifUrl, imageView);
@@ -155,6 +140,99 @@ public final class InlineGiphyCommentPreview {
             preview.setVisibility(showPreview ? View.VISIBLE : View.GONE);
             updateRelativeLayoutAnchors(commentText, preview, showPreview);
         } catch (Throwable ignored) {
+        }
+    }
+
+    private static boolean openNativeGifViewer(Context context, String gifUrl, String sourceUrl) {
+        try {
+            if (context == null || gifUrl == null || gifUrl.length() == 0) return false;
+
+            String openUrl = sourceUrl == null || sourceUrl.length() == 0 ? gifUrl : sourceUrl;
+            seedBoostMediaCache(openUrl, gifUrl);
+
+            Class<?> submissionClass = Class.forName("com.rubenmayayo.reddit.models.reddit.SubmissionModel");
+            Object submission = submissionClass.getConstructor().newInstance();
+            if (!(submission instanceof Parcelable)) return false;
+
+            invokeVoidMethod(submission, "K2", int.class, 4);
+            invokeVoidMethod(submission, "L2", String.class, openUrl);
+            invokeVoidMethod(submission, "I2", String.class, gifUrl);
+            invokeVoidMethod(submission, "J2", String.class, "GIF");
+            setStringField(submission, "f34430x", hostOf(openUrl));
+
+            Intent intent = new Intent(context, Class.forName("com.rubenmayayo.reddit.ui.activities.GifActivity"));
+            intent.putExtra("submission", (Parcelable) submission);
+            intent.putExtra("comment", true);
+            if (!(context instanceof Activity)) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+
+            context.startActivity(intent);
+            return true;
+        } catch (Throwable throwable) {
+            return false;
+        }
+    }
+
+    private static void seedBoostMediaCache(String sourceUrl, String gifUrl) {
+        try {
+            Class<?> cacheClass = Class.forName("he.w");
+            Method singleton = cacheClass.getMethod("c");
+            Object cache = singleton.invoke(null);
+            if (cache == null) return;
+
+            Method playable = cacheClass.getMethod("d", String.class, String.class);
+            playable.invoke(cache, sourceUrl, gifUrl);
+
+            Method original = cacheClass.getMethod("e", String.class, String.class);
+            original.invoke(cache, sourceUrl, gifUrl);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void openExternal(Context context, String sourceUrl) {
+        try {
+            if (context == null || sourceUrl == null || sourceUrl.length() == 0) return;
+
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(sourceUrl));
+            if (!(context instanceof Activity)) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            context.startActivity(intent);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void invokeVoidMethod(Object target, String name, Class<?> parameterType, Object value) {
+        try {
+            Method method = findMethod(target.getClass(), name, parameterType);
+            if (method == null) return;
+
+            method.setAccessible(true);
+            method.invoke(target, value);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void setStringField(Object target, String name, String value) {
+        try {
+            if (target == null || value == null) return;
+
+            Field field = findField(target.getClass(), name);
+            if (field == null || field.getType() != String.class) return;
+
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static String hostOf(String value) {
+        try {
+            String host = Uri.parse(value).getHost();
+            return host == null ? "" : host;
+        } catch (Throwable ignored) {
+            return "";
         }
     }
 
@@ -544,6 +622,20 @@ public final class InlineGiphyCommentPreview {
         while (cls != null) {
             try {
                 Method method = cls.getDeclaredMethod(name);
+                method.setAccessible(true);
+                return method;
+            } catch (Throwable ignored) {
+                cls = cls.getSuperclass();
+            }
+        }
+
+        return null;
+    }
+
+    private static Method findMethod(Class<?> cls, String name, Class<?> parameterType) {
+        while (cls != null) {
+            try {
+                Method method = cls.getDeclaredMethod(name, parameterType);
                 method.setAccessible(true);
                 return method;
             } catch (Throwable ignored) {
