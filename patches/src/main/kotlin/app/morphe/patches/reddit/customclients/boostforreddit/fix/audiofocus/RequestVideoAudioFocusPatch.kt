@@ -87,8 +87,8 @@ private fun MutableMethod.injectRequestBeforeExoPlayWhenReady() {
         }
     }
 
-    check(playIndices.isNotEmpty()) {
-        "Could not find ExoPlayer setPlayWhenReady call in ${definingClass}->${name}"
+    if (playIndices.isEmpty()) {
+        return
     }
 
     playIndices.asReversed().forEach { index ->
