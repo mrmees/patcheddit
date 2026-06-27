@@ -147,20 +147,26 @@ public final class InlineGiphyCommentPreview {
         try {
             if (context == null || gifUrl == null || gifUrl.length() == 0) return false;
 
-            String openUrl = sourceUrl == null || sourceUrl.length() == 0 ? gifUrl : sourceUrl;
-            seedBoostMediaCache(openUrl, gifUrl);
+            String giphyId = findGiphyId(sourceUrl, gifUrl);
+            String openUrl = viewerUrlForSource(gifUrl, sourceUrl, giphyId);
+            int boostType = boostMediaTypeForSource(openUrl, giphyId);
+            seedBoostOriginalGif(openUrl, gifUrl);
 
             Class<?> submissionClass = Class.forName("com.rubenmayayo.reddit.models.reddit.SubmissionModel");
             Object submission = submissionClass.getConstructor().newInstance();
             if (!(submission instanceof Parcelable)) return false;
 
-            invokeVoidMethod(submission, "K2", int.class, 4);
+            invokeVoidMethod(submission, "K2", int.class, boostType);
             invokeVoidMethod(submission, "L2", String.class, openUrl);
             invokeVoidMethod(submission, "I2", String.class, gifUrl);
             invokeVoidMethod(submission, "J2", String.class, "GIF");
             setStringField(submission, "f34430x", hostOf(openUrl));
+            setStringField(submission, "B0", giphyId);
 
-            Intent intent = new Intent(context, Class.forName("com.rubenmayayo.reddit.ui.activities.GifActivity"));
+            String activityName = boostType == 1
+                    ? "com.rubenmayayo.reddit.ui.activities.ImageActivity"
+                    : "com.rubenmayayo.reddit.ui.activities.GifActivity";
+            Intent intent = new Intent(context, Class.forName(activityName));
             intent.putExtra("submission", (Parcelable) submission);
             intent.putExtra("comment", true);
             if (!(context instanceof Activity)) {
@@ -174,20 +180,54 @@ public final class InlineGiphyCommentPreview {
         }
     }
 
-    private static void seedBoostMediaCache(String sourceUrl, String gifUrl) {
+    private static void seedBoostOriginalGif(String sourceUrl, String gifUrl) {
         try {
             Class<?> cacheClass = Class.forName("he.w");
             Method singleton = cacheClass.getMethod("c");
             Object cache = singleton.invoke(null);
             if (cache == null) return;
 
-            Method playable = cacheClass.getMethod("d", String.class, String.class);
-            playable.invoke(cache, sourceUrl, gifUrl);
-
             Method original = cacheClass.getMethod("e", String.class, String.class);
             original.invoke(cache, sourceUrl, gifUrl);
         } catch (Throwable ignored) {
         }
+    }
+
+    private static String findGiphyId(String first, String second) {
+        String id = extractGiphyId(first);
+        if (id != null && id.length() > 0) return id;
+
+        id = extractGiphyId(second);
+        return id != null && id.length() > 0 ? id : null;
+    }
+
+    private static int boostMediaTypeForSource(String openUrl, String giphyId) {
+        if (giphyId != null && giphyId.length() > 0) return 10;
+        return hasGifExtension(openUrl) ? 4 : 1;
+    }
+
+    private static String viewerUrlForSource(String gifUrl, String sourceUrl, String giphyId) {
+        String openUrl = sourceUrl == null || sourceUrl.length() == 0 ? gifUrl : sourceUrl;
+        if (giphyId != null && giphyId.length() > 0) return openUrl;
+        return stripGifQuery(openUrl);
+    }
+
+    private static boolean hasGifExtension(String value) {
+        if (value == null) return false;
+        String lower = value.toLowerCase();
+        return lower.endsWith(".gif") || lower.contains(".gif?");
+    }
+
+    private static String stripGifQuery(String value) {
+        if (value == null) return null;
+
+        String lower = value.toLowerCase();
+        int gifQueryIndex = lower.indexOf(".gif?");
+        if (gifQueryIndex >= 0) {
+            return value.substring(0, gifQueryIndex + 4);
+        }
+
+        return cleanUrlTail(value);
     }
 
     private static void openExternal(Context context, String sourceUrl) {
