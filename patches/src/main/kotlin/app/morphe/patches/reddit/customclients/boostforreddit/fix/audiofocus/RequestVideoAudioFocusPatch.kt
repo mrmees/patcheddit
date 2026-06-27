@@ -19,8 +19,15 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 private const val AUDIO_FOCUS_EXTENSION_DESCRIPTOR =
     "Lapp/morphe/extension/boostforreddit/BoostAudioFocus;"
 
-private const val EXOPLAYER_DESCRIPTOR =
-    "Lcom/google/android/exoplayer2/k;"
+private val EXOPLAYER_PLAY_WHEN_READY_DESCRIPTORS = setOf(
+    "Lcom/google/android/exoplayer2/k;",
+    "Lcom/google/android/exoplayer2/w1;"
+)
+
+private val EXOPLAYER_PLAY_WHEN_READY_OPCODES = setOf(
+    Opcode.INVOKE_VIRTUAL,
+    Opcode.INVOKE_INTERFACE
+)
 
 @Suppress("unused")
 val requestVideoAudioFocusPatch = bytecodePatch(
@@ -75,8 +82,8 @@ private fun MutableMethod.injectRequestBeforeExoPlayWhenReady() {
     val playIndices = implementation!!.instructions.withIndex().mapNotNull { (index, instruction) ->
         val methodReference = instruction.getReference<MethodReference>()
         if (
-            instruction.opcode == Opcode.INVOKE_VIRTUAL &&
-            methodReference?.definingClass == EXOPLAYER_DESCRIPTOR &&
+            instruction.opcode in EXOPLAYER_PLAY_WHEN_READY_OPCODES &&
+            methodReference?.definingClass in EXOPLAYER_PLAY_WHEN_READY_DESCRIPTORS &&
             methodReference.name == "m" &&
             methodReference.returnType == "V" &&
             methodReference.parameterTypes == listOf("Z")

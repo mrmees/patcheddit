@@ -32,6 +32,14 @@ def main() -> None:
         "setPlayWhenReady calls"
     )
 
+    assert "Lcom/google/android/exoplayer2/w1;" in source, (
+        "Boost's ExoPlayer playWhenReady calls can reference the Player "
+        "interface descriptor"
+    )
+    assert "Opcode.INVOKE_INTERFACE" in source, (
+        "Boost's ExoPlayer playWhenReady calls can use invoke-interface"
+    )
+
 
 if __name__ == "__main__":
     main()
