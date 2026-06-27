@@ -81,6 +81,10 @@ public final class app/morphe/patches/reddit/customclients/boostforreddit/debug/
 	public static final fun getHookExceptionHandler ()Lapp/morphe/patcher/patch/BytecodePatch;
 }
 
+public final class app/morphe/patches/reddit/customclients/boostforreddit/fix/audiofocus/RequestVideoAudioFocusPatchKt {
+	public static final fun getRequestVideoAudioFocusPatch ()Lapp/morphe/patcher/patch/BytecodePatch;
+}
+
 public final class app/morphe/patches/reddit/customclients/boostforreddit/fix/downloads/FixAudioMissingInDownloadsPatchKt {
 	public static final fun getFixAudioMissingInDownloadsPatch ()Lapp/morphe/patcher/patch/BytecodePatch;
 }
@@ -660,4 +664,3 @@ public final class app/morphe/util/resource/StringResource : app/morphe/util/res
 public final class app/morphe/util/resource/StringResource$Companion {
 	public final fun fromNode (Lorg/w3c/dom/Node;)Lapp/morphe/util/resource/StringResource;
 }
-
