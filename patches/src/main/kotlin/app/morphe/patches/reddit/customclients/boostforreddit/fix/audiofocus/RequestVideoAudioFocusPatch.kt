@@ -83,7 +83,8 @@ private fun MutableMethod.injectRequestBeforeExoPlayWhenReady() {
         val methodReference = instruction.getReference<MethodReference>()
         if (
             instruction.opcode in EXOPLAYER_PLAY_WHEN_READY_OPCODES &&
-            methodReference?.definingClass in EXOPLAYER_PLAY_WHEN_READY_DESCRIPTORS &&
+            methodReference != null &&
+            methodReference.definingClass in EXOPLAYER_PLAY_WHEN_READY_DESCRIPTORS &&
             methodReference.name == "m" &&
             methodReference.returnType == "V" &&
             methodReference.parameterTypes == listOf("Z")
