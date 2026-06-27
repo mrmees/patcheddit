@@ -18,6 +18,16 @@ public final class BoostAudioFocus {
             new AudioManager.OnAudioFocusChangeListener() {
                 @Override
                 public void onAudioFocusChange(int focusChange) {
+                    synchronized (BoostAudioFocus.class) {
+                        if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                            hasFocus = true;
+                        } else if (focusChange == AudioManager.AUDIOFOCUS_LOSS
+                                || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+                                || focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) {
+                            hasFocus = false;
+                        }
+                    }
+
                     Log.d(TAG, "audio focus changed: " + focusChange);
                 }
             };
