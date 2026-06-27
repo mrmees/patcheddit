@@ -1,5 +1,5 @@
 {
-  "version": "1.4.3",
+  "version": "v1.4.4",
   "patches": [
     {
       "name": "Add archive links to context menu",
@@ -416,6 +416,20 @@
         ],
         "com.laurencedawson.reddit_sync.pro": null,
         "com.laurencedawson.reddit_sync.dev": null
+      },
+      "options": []
+    },
+    {
+      "name": "Request audio focus for Boost videos",
+      "description": "Requests Android audio focus whenever Boost starts video playback.",
+      "use": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.rubenmayayo.reddit": [
+          "1.12.12"
+        ]
       },
       "options": []
     },
