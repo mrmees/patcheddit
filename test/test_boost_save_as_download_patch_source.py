@@ -69,6 +69,59 @@ def test_helper_uses_long_click_and_system_picker() -> None:
     )
 
 
+def test_helper_derives_boost_reddit_video_download_urls() -> None:
+    source = read_required(HELPER_FILE)
+
+    assert "resolveBoostVideoDownloadUrl" in source, (
+        "DASH/HLS media should use Boost's derived download URL, not the player manifest URL"
+    )
+    assert 'Class.forName("he.h0")' in source, (
+        "helper should reflect Boost's existing media URL helper"
+    )
+    assert 'getDeclaredMethod("F"' in source, (
+        "helper should call Boost's SubmissionModel/video-track URL resolver"
+    )
+    assert '"f34891c"' in source and '"f34585t"' in source, (
+        "ExoActivity should pass its submission and video track list to Boost's resolver"
+    )
+    assert '"f34737g"' in source and '"f34779y"' in source, (
+        "MediaVideoActivity should pass its submission and video track list to Boost's resolver"
+    )
+    assert '"f34572g"' in source and '"f34767m"' in source, (
+        "helper should only prefer derived URLs for Boost's DASH/HLS media modes"
+    )
+    assert "applyRedditFallbackMp4Extension" in source, (
+        "fallback DASH URLs should get Boost's .mp4 compatibility suffix"
+    )
+    assert ".mp4?source=fallback" in source
+    assert "isDownloadableRedditVideoUrl" in source, (
+        "raw v.redd.it manifests should not be treated as directly saveable media"
+    )
+
+
+def test_helper_uses_boost_downloader_before_copying_to_picker_uri() -> None:
+    source = read_required(HELPER_FILE)
+
+    assert "downloadWithBoostDownloader" in source, (
+        "save-as should reuse Boost's downloader so v.redd.it audio muxing still applies"
+    )
+    assert 'Class.forName("tb.b")' in source, (
+        "helper should reflect Boost's downloader implementation"
+    )
+    assert 'Class.forName("tb.d")' in source, (
+        "helper should provide Boost's downloader listener interface"
+    )
+    assert "Proxy.newProxyInstance" in source, (
+        "helper should observe Boost downloader success/failure callbacks"
+    )
+    assert "copyFileToUri" in source, (
+        "helper should copy Boost's downloaded temp file into the system picker URI"
+    )
+    assert "writeMediaDirectly" in source, (
+        "direct HTTP streaming should remain only as a fallback"
+    )
+
+
 def test_patch_installs_helper_without_click_replacement() -> None:
     source = read_required(PATCH_FILE)
 
@@ -161,6 +214,8 @@ def test_commit_does_not_track_temporary_or_apk_artifacts() -> None:
 
 if __name__ == "__main__":
     test_helper_uses_long_click_and_system_picker()
+    test_helper_derives_boost_reddit_video_download_urls()
+    test_helper_uses_boost_downloader_before_copying_to_picker_uri()
     test_patch_installs_helper_without_click_replacement()
     test_patch_targets_boost_media_activity_on_create_methods()
     test_patch_injects_install_before_every_return_in_reverse_order()

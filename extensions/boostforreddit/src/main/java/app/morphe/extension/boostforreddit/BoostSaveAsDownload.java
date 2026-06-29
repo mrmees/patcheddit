@@ -20,10 +20,14 @@ import android.view.ViewGroup;
 import android.webkit.MimeTypeMap;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -240,26 +244,65 @@ public final class BoostSaveAsDownload {
         String className = owner.getClass().getName();
         if (className.endsWith(".ExoActivity") || className.endsWith("$ExoActivity")
                 || className.contains("ExoActivity")) {
-            String url = stringField(owner, "f34573h");
+            String url = resolveBoostVideoDownloadUrl(owner, "f34891c", "f34585t", "f34572g", "f34589x");
+            if (isUsableMediaUrl(url)) {
+                return url;
+            }
+
+            url = stringField(owner, "f34573h");
             return isUsableMediaUrl(url) ? url : stringField(owner, "f34890b");
         }
 
         if (className.endsWith(".MediaVideoActivity") || className.endsWith("$MediaVideoActivity")
                 || className.contains("MediaVideoActivity")) {
-            String url = stringField(owner, "f34768n");
+            String url = resolveBoostVideoDownloadUrl(owner, "f34737g", "f34779y", "f34767m", "C");
+            if (isUsableMediaUrl(url)) {
+                return url;
+            }
+
+            url = stringField(owner, "f34768n");
             return isUsableMediaUrl(url) ? url : stringField(owner, "f34736f");
         }
 
         return null;
     }
 
-    private static String stringField(Object owner, String fieldName) {
+    private static String resolveBoostVideoDownloadUrl(
+            Object owner,
+            String submissionField,
+            String tracksField,
+            String mediaModeField,
+            String hlsFallbackField
+    ) {
+        int mediaMode = intField(owner, mediaModeField, -1);
+        if (mediaMode != 2 && !(booleanField(owner, hlsFallbackField) && mediaMode == 3)) {
+            return null;
+        }
+
+        Object submission = objectField(owner, submissionField);
+        if (submission == null) {
+            return null;
+        }
+
+        Object tracks = objectField(owner, tracksField);
+        try {
+            Class<?> submissionClass = Class.forName("com.rubenmayayo.reddit.models.reddit.SubmissionModel");
+            Method method = Class.forName("he.h0").getDeclaredMethod("F", submissionClass, List.class);
+            method.setAccessible(true);
+            Object url = method.invoke(null, submission, tracks instanceof List ? tracks : null);
+            return applyRedditFallbackMp4Extension(valueToString(url));
+        } catch (Throwable t) {
+            LoggingUtils.logException(false, () -> "Failed to resolve Boost video download URL", t);
+            return null;
+        }
+    }
+
+    private static Object objectField(Object owner, String fieldName) {
         for (Class<?> cls = owner.getClass(); cls != null && cls != Object.class; cls = cls.getSuperclass()) {
             try {
                 Field field = cls.getDeclaredField(fieldName);
                 field.setAccessible(true);
-                Object value = field.get(owner);
-                return value instanceof CharSequence ? value.toString() : null;
+                return field.get(owner);
             } catch (NoSuchFieldException ignored) {
                 // Try superclass.
             } catch (Throwable t) {
@@ -268,6 +311,21 @@ public final class BoostSaveAsDownload {
             }
         }
         return null;
+    }
+
+    private static String stringField(Object owner, String fieldName) {
+        Object value = objectField(owner, fieldName);
+        return value instanceof CharSequence ? value.toString() : null;
+    }
+
+    private static int intField(Object owner, String fieldName, int fallback) {
+        Object value = objectField(owner, fieldName);
+        return value instanceof Number ? ((Number) value).intValue() : fallback;
+    }
+
+    private static boolean booleanField(Object owner, String fieldName) {
+        Object value = objectField(owner, fieldName);
+        return value instanceof Boolean && (Boolean) value;
     }
 
     private static String resolveIntentMediaUrl(Intent intent) {
@@ -315,16 +373,42 @@ public final class BoostSaveAsDownload {
         if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
             return false;
         }
-        return hasKnownMediaExtension(lower) || lower.contains("v.redd.it")
-                || lower.contains("i.redd.it") || lower.contains("i.imgur.com")
+
+        if (isRedditVideoUrl(lower)) {
+            return isDownloadableRedditVideoUrl(lower);
+        }
+
+        return hasKnownMediaExtension(lower) || lower.contains("i.redd.it") || lower.contains("i.imgur.com")
                 || lower.contains("redgifs.com") || lower.contains("gfycat.com")
                 || lower.contains("giphy.com");
+    }
+
+    private static boolean isRedditVideoUrl(String lower) {
+        return lower.contains("v.redd.it");
+    }
+
+    private static boolean isDownloadableRedditVideoUrl(String lower) {
+        return lower.contains(".mp4") || lower.contains("/dash_") || lower.contains("/audio");
     }
 
     private static boolean hasKnownMediaExtension(String lower) {
         return lower.contains(".jpg") || lower.contains(".jpeg") || lower.contains(".png")
                 || lower.contains(".gif") || lower.contains(".webp") || lower.contains(".mp4")
                 || lower.contains(".webm") || lower.contains(".m4v");
+    }
+
+    private static String applyRedditFallbackMp4Extension(String url) {
+        if (url == null) {
+            return null;
+        }
+
+        String lower = url.toLowerCase(Locale.ROOT);
+        if (isRedditVideoUrl(lower) && lower.endsWith("?source=fallback")
+                && !lower.contains(".mp4?source=fallback")) {
+            return url.substring(0, url.length() - "?source=fallback".length()) + ".mp4?source=fallback";
+        }
+
+        return url;
     }
 
     private static String fileNameForUrl(String url) {
@@ -385,6 +469,77 @@ public final class BoostSaveAsDownload {
 
     private static void writeMedia(Context context, PendingSave save, Uri target) {
         boolean success = false;
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("boost-save-as-", extensionForUrl(save.url), context.getCacheDir());
+            if (downloadWithBoostDownloader(context, save.url, tempFile)) {
+                copyFileToUri(context, tempFile, target);
+            } else {
+                writeMediaDirectly(context, save, target);
+            }
+
+            success = true;
+            showToast(context, "Media saved");
+        } catch (Throwable t) {
+            LoggingUtils.logException(false, () -> "Failed to save Boost media as " + save.mimeType, t);
+            showToast(context, "Unable to save media");
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                tempFile.delete();
+            }
+            final boolean completed = success;
+            LoggingUtils.logInfo(completed, () -> "Boost save-as download complete success=" + completed);
+        }
+    }
+
+    private static boolean downloadWithBoostDownloader(Context context, String url, File target) {
+        final boolean[] failed = {false};
+        final boolean[] completed = {false};
+        try {
+            Class<?> listenerClass = Class.forName("tb.d");
+            Object listener = Proxy.newProxyInstance(
+                    listenerClass.getClassLoader(),
+                    new Class<?>[]{listenerClass},
+                    (proxy, method, args) -> {
+                        String name = method.getName();
+                        if ("a".equals(name)) {
+                            failed[0] = true;
+                        } else if ("c".equals(name)) {
+                            completed[0] = true;
+                        }
+                        return null;
+                    }
+            );
+
+            Class<?> downloaderClass = Class.forName("tb.b");
+            Object downloader = downloaderClass.getDeclaredConstructor().newInstance();
+            Method download = downloaderClass.getDeclaredMethod(
+                    "b",
+                    Context.class,
+                    String.class,
+                    File.class,
+                    listenerClass
+            );
+            download.invoke(downloader, context, url, target, listener);
+            return !failed[0] && (completed[0] || target.exists()) && target.length() > 0L;
+        } catch (Throwable t) {
+            LoggingUtils.logException(false, () -> "Failed to save with Boost downloader", t);
+            return false;
+        }
+    }
+
+    private static void copyFileToUri(Context context, File source, Uri target) throws IOException {
+        try (InputStream input = new FileInputStream(source);
+             OutputStream output = context.getContentResolver().openOutputStream(target)) {
+            if (output == null) {
+                throw new IOException("ContentResolver returned null output stream");
+            }
+            copy(input, output);
+        }
+    }
+
+    private static void writeMediaDirectly(Context context, PendingSave save, Uri target) throws IOException {
         try (Response response = HttpUtils.get(save.url)) {
             if (!response.isSuccessful()) {
                 throw new IOException("HTTP " + response.code());
@@ -402,15 +557,6 @@ public final class BoostSaveAsDownload {
                 }
                 copy(input, output);
             }
-
-            success = true;
-            showToast(context, "Media saved");
-        } catch (Throwable t) {
-            LoggingUtils.logException(false, () -> "Failed to save Boost media as " + save.mimeType, t);
-            showToast(context, "Unable to save media");
-        } finally {
-            final boolean completed = success;
-            LoggingUtils.logInfo(completed, () -> "Boost save-as download complete success=" + completed);
         }
     }
 
