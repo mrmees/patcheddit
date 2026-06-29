@@ -124,7 +124,7 @@ def test_patch_generates_activity_result_bridge_with_expected_superclasses() -> 
     assert "ImmutableMethodParameter" in source, (
         "generated methods must pass typed immutable parameters to dexlib"
     )
-    assert "MutableMethodImplementation(4).toImmutable()" in source, (
+    assert "ImmutableMethodImplementation.of(MutableMethodImplementation(4))" in source, (
         "generated methods must pass an immutable implementation to dexlib"
     )
     assert "ACTIVITY_RESULT_PARAMETER_TYPES" in source, (

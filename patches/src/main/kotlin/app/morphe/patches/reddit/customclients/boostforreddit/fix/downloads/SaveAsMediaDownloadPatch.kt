@@ -18,6 +18,7 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val SAVE_AS_DOWNLOAD_EXTENSION_DESCRIPTOR =
@@ -105,7 +106,7 @@ private fun MutableClass.injectSaveAsActivityResultHook(superclass: String) {
             AccessFlags.PROTECTED.value,
             null,
             null,
-            MutableMethodImplementation(4).toImmutable()
+            ImmutableMethodImplementation.of(MutableMethodImplementation(4))
         ).toMutable().apply {
             addInstructions(
                 0,
