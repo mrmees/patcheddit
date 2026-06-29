@@ -88,6 +88,16 @@ def test_helper_retries_toolbar_download_view_attachment() -> None:
 def test_helper_derives_boost_reddit_video_download_urls() -> None:
     source = read_required(HELPER_FILE)
 
+    assert "resolveMediaVideoDownloadUrl" in source, (
+        "MediaVideoActivity should mirror Boost's own download action instead "
+        "of relying only on player fields"
+    )
+    assert 'stringMethod(owner, "v2")' in source, (
+        "MediaVideoActivity should call Boost's private DASH/HLS download URL resolver"
+    )
+    assert 'stringMethod(owner, "t2")' in source, (
+        "MediaVideoActivity should call Boost's private GIF/MP4 alternate URL resolver"
+    )
     assert "resolveBoostVideoDownloadUrl" in source, (
         "DASH/HLS media should use Boost's derived download URL, not the player manifest URL"
     )

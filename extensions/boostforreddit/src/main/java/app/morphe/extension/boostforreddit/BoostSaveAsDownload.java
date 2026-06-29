@@ -280,13 +280,7 @@ public final class BoostSaveAsDownload {
 
         if (className.endsWith(".MediaVideoActivity") || className.endsWith("$MediaVideoActivity")
                 || className.contains("MediaVideoActivity")) {
-            String url = resolveBoostVideoDownloadUrl(owner, "f34737g", "f34779y", "f34767m", "C");
-            if (isUsableMediaUrl(url)) {
-                return url;
-            }
-
-            url = stringField(owner, "f34768n");
-            return isUsableMediaUrl(url) ? url : stringField(owner, "f34736f");
+            return resolveMediaVideoDownloadUrl(owner);
         }
 
         if (className.endsWith(".MediaImageActivity") || className.endsWith("$MediaImageActivity")
@@ -314,6 +308,34 @@ public final class BoostSaveAsDownload {
         }
 
         return null;
+    }
+
+    private static String resolveMediaVideoDownloadUrl(Object owner) {
+        int mediaMode = intField(owner, "f34767m", -1);
+        boolean useHlsFallback = booleanField(owner, "C");
+        if (mediaMode == 2 || (useHlsFallback && mediaMode == 3)) {
+            String url = firstUsableMediaUrl(
+                    stringMethod(owner, "v2"),
+                    resolveBoostVideoDownloadUrl(owner, "f34737g", "f34779y", "f34767m", "C")
+            );
+            if (url != null) {
+                return url;
+            }
+        }
+
+        String url = firstUsableMediaUrl(
+                stringField(owner, "f34768n"),
+                stringMethod(owner, "t2"),
+                stringField(owner, "f34736f")
+        );
+        if (url != null) {
+            return url;
+        }
+
+        return firstUsableMediaUrl(
+                stringMethod(owner, "v2"),
+                resolveBoostVideoDownloadUrl(owner, "f34737g", "f34779y", "f34767m", "C")
+        );
     }
 
     private static String resolveMediaImageDownloadUrl(Object owner) {
@@ -456,6 +478,21 @@ public final class BoostSaveAsDownload {
     private static boolean booleanField(Object owner, String fieldName) {
         Object value = objectField(owner, fieldName);
         return value instanceof Boolean && (Boolean) value;
+    }
+
+    private static String firstUsableMediaUrl(String... candidates) {
+        if (candidates == null) {
+            return null;
+        }
+
+        for (String candidate : candidates) {
+            String url = applyRedditFallbackMp4Extension(candidate);
+            if (isUsableMediaUrl(url)) {
+                return url;
+            }
+        }
+
+        return null;
     }
 
     private static String resolveIntentMediaUrl(Intent intent) {
