@@ -69,6 +69,22 @@ def test_helper_uses_long_click_and_system_picker() -> None:
     )
 
 
+def test_helper_retries_toolbar_download_view_attachment() -> None:
+    source = read_required(HELPER_FILE)
+
+    assert "installRepeatedly" in source, (
+        "download action views can be created or rebound after menu inflation; "
+        "helper should retry attaching after install"
+    )
+    assert "3000L" in source, (
+        "helper should keep retrying long enough to outlast toolbar menu view setup"
+    )
+    assert "INSTALLED_VIEWS.containsKey" not in source, (
+        "helper should be able to reattach when AppCompat tooltip setup replaces "
+        "the long-click listener after an earlier scan"
+    )
+
+
 def test_helper_derives_boost_reddit_video_download_urls() -> None:
     source = read_required(HELPER_FILE)
 
@@ -96,6 +112,30 @@ def test_helper_derives_boost_reddit_video_download_urls() -> None:
     assert ".mp4?source=fallback" in source
     assert "isDownloadableRedditVideoUrl" in source, (
         "raw v.redd.it manifests should not be treated as directly saveable media"
+    )
+
+
+def test_helper_resolves_boost_image_and_gallery_download_urls() -> None:
+    source = read_required(HELPER_FILE)
+
+    assert "resolveMediaImageDownloadUrl" in source, (
+        "MediaImageActivity should be able to resolve the same URL used by "
+        "Boost's normal image download action"
+    )
+    assert "resolveLegacyImageDownloadUrl" in source, (
+        "older ImageActivity/ImageActivity2 viewers should also be supported"
+    )
+    assert "resolveGifDownloadUrl" in source, (
+        "Boost's GifActivity should use the loaded gif/mp4 URL field"
+    )
+    assert "resolveGalleryDownloadUrl" in source, (
+        "gallery viewers should save the currently visible gallery item"
+    )
+    assert '"R1"' in source and '"D1"' in source and '"F1"' in source, (
+        "helper should call Boost's existing image URL resolver methods"
+    )
+    assert '"f34615h"' in source and '"viewPager"' in source and '"getDownloadUrl"' in source, (
+        "gallery URL resolution should reflect the current ImageModel download URL"
     )
 
 
@@ -165,6 +205,11 @@ def test_patch_targets_boost_media_activity_menu_creation_methods() -> None:
 
     assert "exoActivityOnCreateOptionsMenuFingerprint" in source
     assert "mediaVideoActivityOnCreateOptionsMenuFingerprint" in source
+    assert "mediaImageActivityOnCreateOptionsMenuFingerprint" in source
+    assert "imageActivityOnCreateOptionsMenuFingerprint" in source
+    assert "imageActivity2OnCreateOptionsMenuFingerprint" in source
+    assert "gifActivityOnCreateOptionsMenuFingerprint" in source
+    assert "galleryActivityOnCreateOptionsMenuFingerprint" in source
     assert 'name = "onCreateOptionsMenu"' in source
     assert 'returnType = "Z"' in source
     assert 'parameters = listOf("Landroid/view/Menu;")' in source
@@ -203,6 +248,12 @@ def test_patch_generates_activity_result_bridge_with_expected_superclasses() -> 
     assert "Lcom/rubenmayayo/reddit/ui/activities/MediaActivity;" in source, (
         "MediaVideoActivity should delegate onActivityResult to its actual superclass"
     )
+    assert "Lcom/rubenmayayo/reddit/ui/activities/c;" in source, (
+        "legacy image and gallery activities should delegate activity results to BaseImageActivity"
+    )
+    assert "Lcom/rubenmayayo/reddit/ui/activities/d;" in source, (
+        "legacy gif/download media activities should delegate activity results to DownloadMediaActivity"
+    )
     assert "->onActivityResult(IILandroid/content/Intent;)V" in source, (
         "generated method should call the exact activity-result descriptor"
     )
@@ -228,7 +279,9 @@ def test_commit_does_not_track_temporary_or_apk_artifacts() -> None:
 
 if __name__ == "__main__":
     test_helper_uses_long_click_and_system_picker()
+    test_helper_retries_toolbar_download_view_attachment()
     test_helper_derives_boost_reddit_video_download_urls()
+    test_helper_resolves_boost_image_and_gallery_download_urls()
     test_helper_uses_boost_downloader_before_copying_to_picker_uri()
     test_patch_installs_helper_without_click_replacement()
     test_patch_targets_boost_media_activity_on_create_methods()

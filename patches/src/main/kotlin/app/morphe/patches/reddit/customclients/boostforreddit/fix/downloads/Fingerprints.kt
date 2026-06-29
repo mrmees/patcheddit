@@ -40,3 +40,38 @@ internal val mediaVideoActivityOnCreateOptionsMenuFingerprint = Fingerprint(
     returnType = "Z",
     parameters = listOf("Landroid/view/Menu;")
 )
+
+internal val mediaImageActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/MediaImageActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)
+
+internal val imageActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/ImageActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)
+
+internal val imageActivity2OnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/ImageActivity2;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)
+
+internal val gifActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/GifActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)
+
+internal val galleryActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/GalleryActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)

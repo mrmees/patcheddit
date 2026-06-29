@@ -37,6 +37,10 @@ private const val EXO_ACTIVITY_SUPERCLASS =
     "Lcom/rubenmayayo/reddit/ui/activities/d;"
 private const val MEDIA_VIDEO_ACTIVITY_SUPERCLASS =
     "Lcom/rubenmayayo/reddit/ui/activities/MediaActivity;"
+private const val BASE_IMAGE_ACTIVITY_SUPERCLASS =
+    "Lcom/rubenmayayo/reddit/ui/activities/c;"
+private const val DOWNLOAD_MEDIA_ACTIVITY_SUPERCLASS =
+    "Lcom/rubenmayayo/reddit/ui/activities/d;"
 
 @Suppress("unused")
 val saveAsMediaDownloadPatch = bytecodePatch(
@@ -54,7 +58,21 @@ val saveAsMediaDownloadPatch = bytecodePatch(
         )
         val menuFingerprints = listOf(
             exoActivityOnCreateOptionsMenuFingerprint,
-            mediaVideoActivityOnCreateOptionsMenuFingerprint
+            mediaVideoActivityOnCreateOptionsMenuFingerprint,
+            mediaImageActivityOnCreateOptionsMenuFingerprint,
+            imageActivityOnCreateOptionsMenuFingerprint,
+            imageActivity2OnCreateOptionsMenuFingerprint,
+            gifActivityOnCreateOptionsMenuFingerprint,
+            galleryActivityOnCreateOptionsMenuFingerprint
+        )
+        val activityResultTargets = listOf(
+            exoActivityOnCreateFingerprint.classDef to EXO_ACTIVITY_SUPERCLASS,
+            mediaVideoActivityOnCreateFingerprint.classDef to MEDIA_VIDEO_ACTIVITY_SUPERCLASS,
+            mediaImageActivityOnCreateOptionsMenuFingerprint.classDef to MEDIA_VIDEO_ACTIVITY_SUPERCLASS,
+            imageActivityOnCreateOptionsMenuFingerprint.classDef to BASE_IMAGE_ACTIVITY_SUPERCLASS,
+            imageActivity2OnCreateOptionsMenuFingerprint.classDef to BASE_IMAGE_ACTIVITY_SUPERCLASS,
+            gifActivityOnCreateOptionsMenuFingerprint.classDef to DOWNLOAD_MEDIA_ACTIVITY_SUPERCLASS,
+            galleryActivityOnCreateOptionsMenuFingerprint.classDef to BASE_IMAGE_ACTIVITY_SUPERCLASS
         )
 
         activityFingerprints.forEach { (fingerprint, _) ->
@@ -64,8 +82,7 @@ val saveAsMediaDownloadPatch = bytecodePatch(
             fingerprint.method.injectSaveAsInstallAfterMenuInflation()
         }
 
-        activityFingerprints
-            .map { (fingerprint, superclass) -> fingerprint.classDef to superclass }
+        activityResultTargets
             .distinctBy { (activityClass, _) -> activityClass.type }
             .forEach { (activityClass, superclass) ->
                 activityClass.injectSaveAsActivityResultHook(superclass)

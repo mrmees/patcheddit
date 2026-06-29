@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -33,8 +34,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -49,10 +48,16 @@ import okhttp3.ResponseBody;
 @SuppressWarnings("deprecation")
 public final class BoostSaveAsDownload {
     private static final int REQUEST_CODE_SAVE_AS = 0x51A5;
+    private static final long[] INSTALL_RETRY_DELAYS_MS = {
+            0L,
+            100L,
+            300L,
+            700L,
+            1500L,
+            3000L
+    };
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final ExecutorService DOWNLOAD_EXECUTOR = Executors.newSingleThreadExecutor();
-    private static final Map<View, Boolean> INSTALLED_VIEWS =
-            Collections.synchronizedMap(new WeakHashMap<>());
 
     private static PendingSave pendingSave;
 
@@ -71,8 +76,7 @@ public final class BoostSaveAsDownload {
                 return;
             }
 
-            root.post(() -> attachToDownloadViews(owner, root));
-            root.postDelayed(() -> attachToDownloadViews(owner, root), 500L);
+            installRepeatedly(owner, root);
         } catch (Throwable t) {
             LoggingUtils.logException(false, () -> "Failed to install Boost save-as download", t);
         }
@@ -112,12 +116,35 @@ public final class BoostSaveAsDownload {
         }
     }
 
+    private static void installRepeatedly(Object owner, View root) {
+        for (long delay : INSTALL_RETRY_DELAYS_MS) {
+            root.postDelayed(() -> attachToDownloadViews(owner, root), delay);
+        }
+    }
+
     private static void attachToDownloadViews(Object owner, View root) {
         List<View> candidates = new ArrayList<>();
+        View actionDownloadView = findActionDownloadView(root);
+        if (actionDownloadView != null) {
+            candidates.add(actionDownloadView);
+        }
         collectDownloadCandidates(root, candidates);
         for (View candidate : candidates) {
             attach(owner, candidate);
         }
+    }
+
+    private static View findActionDownloadView(View root) {
+        if (root == null || root.getContext() == null) {
+            return null;
+        }
+
+        int id = root.getResources().getIdentifier(
+                "action_download",
+                "id",
+                root.getContext().getPackageName()
+        );
+        return id == 0 ? null : root.findViewById(id);
     }
 
     private static void collectDownloadCandidates(View view, List<View> candidates) {
@@ -138,10 +165,6 @@ public final class BoostSaveAsDownload {
     }
 
     private static boolean looksLikeDownloadView(View view) {
-        if (!view.isClickable()) {
-            return false;
-        }
-
         String contentDescription = valueToString(view.getContentDescription());
         if (isDownloadIdentifier(contentDescription)) {
             return true;
@@ -170,12 +193,14 @@ public final class BoostSaveAsDownload {
     }
 
     private static void attach(Object owner, View downloadView) {
-        if (downloadView == null || INSTALLED_VIEWS.containsKey(downloadView)) {
+        if (downloadView == null) {
             return;
         }
 
-        INSTALLED_VIEWS.put(downloadView, Boolean.TRUE);
         downloadView.setLongClickable(true);
+        if (Build.VERSION.SDK_INT >= 26) {
+            downloadView.setTooltipText(null);
+        }
         downloadView.setOnLongClickListener(view -> {
             try {
                 return startSaveAs(owner, view);
@@ -264,7 +289,72 @@ public final class BoostSaveAsDownload {
             return isUsableMediaUrl(url) ? url : stringField(owner, "f34736f");
         }
 
+        if (className.endsWith(".MediaImageActivity") || className.endsWith("$MediaImageActivity")
+                || className.contains("MediaImageActivity")) {
+            return resolveMediaImageDownloadUrl(owner);
+        }
+
+        if (className.endsWith(".ImageActivity2") || className.endsWith("$ImageActivity2")
+                || className.contains("ImageActivity2")) {
+            return resolveLegacyImageDownloadUrl(owner, "F1");
+        }
+
+        if (className.endsWith(".ImageActivity") || className.endsWith("$ImageActivity")
+                || className.contains("ImageActivity")) {
+            return resolveLegacyImageDownloadUrl(owner, "D1");
+        }
+
+        if (className.endsWith(".GifActivity") || className.endsWith("$GifActivity")
+                || className.contains("GifActivity")) {
+            return resolveGifDownloadUrl(owner);
+        }
+
+        if (isInstanceOf(owner, "com.rubenmayayo.reddit.ui.activities.GalleryActivity")) {
+            return resolveGalleryDownloadUrl(owner);
+        }
+
         return null;
+    }
+
+    private static String resolveMediaImageDownloadUrl(Object owner) {
+        String url = stringMethod(owner, "R1");
+        return isUsableMediaUrl(url) ? url : stringField(owner, "f34736f");
+    }
+
+    private static String resolveLegacyImageDownloadUrl(Object owner, String resolverMethod) {
+        String url = stringMethod(owner, resolverMethod);
+        return isUsableMediaUrl(url) ? url : stringField(owner, "f34890b");
+    }
+
+    private static String resolveGifDownloadUrl(Object owner) {
+        String url = stringField(owner, "f34646g");
+        return isUsableMediaUrl(url) ? url : stringField(owner, "f34890b");
+    }
+
+    private static String resolveGalleryDownloadUrl(Object owner) {
+        Object images = objectField(owner, "f34615h");
+        if (!(images instanceof List)) {
+            return stringField(owner, "f34890b");
+        }
+
+        List<?> imageList = (List<?>) images;
+        if (imageList.isEmpty()) {
+            return stringField(owner, "f34890b");
+        }
+
+        int index = 0;
+        Object viewPager = objectField(owner, "viewPager");
+        Object currentItem = invokeNoArgMethod(viewPager, "getCurrentItem");
+        if (currentItem instanceof Number) {
+            int candidate = ((Number) currentItem).intValue();
+            if (candidate >= 0 && candidate < imageList.size()) {
+                index = candidate;
+            }
+        }
+
+        Object imageModel = imageList.get(index);
+        String url = stringMethod(imageModel, "getDownloadUrl");
+        return isUsableMediaUrl(url) ? url : stringField(owner, "f34890b");
     }
 
     private static String resolveBoostVideoDownloadUrl(
@@ -311,6 +401,46 @@ public final class BoostSaveAsDownload {
             }
         }
         return null;
+    }
+
+    private static String stringMethod(Object owner, String methodName) {
+        Object value = invokeNoArgMethod(owner, methodName);
+        return value instanceof CharSequence ? value.toString() : null;
+    }
+
+    private static Object invokeNoArgMethod(Object owner, String methodName) {
+        if (owner == null) {
+            return null;
+        }
+
+        for (Class<?> cls = owner.getClass(); cls != null && cls != Object.class; cls = cls.getSuperclass()) {
+            try {
+                Method method = cls.getDeclaredMethod(methodName);
+                method.setAccessible(true);
+                return method.invoke(owner);
+            } catch (NoSuchMethodException ignored) {
+                // Try superclass.
+            } catch (Throwable t) {
+                LoggingUtils.logException(false, () -> "Failed to call Boost media method " + methodName, t);
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isInstanceOf(Object owner, String className) {
+        if (owner == null) {
+            return false;
+        }
+
+        for (Class<?> cls = owner.getClass(); cls != null && cls != Object.class; cls = cls.getSuperclass()) {
+            if (className.equals(cls.getName())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static String stringField(Object owner, String fieldName) {
