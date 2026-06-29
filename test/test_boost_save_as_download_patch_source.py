@@ -125,6 +125,28 @@ def test_helper_derives_boost_reddit_video_download_urls() -> None:
     )
 
 
+def test_helper_offers_mp4_gif_choice_before_system_picker() -> None:
+    source = read_required(HELPER_FILE)
+
+    assert "AlertDialog" in source, (
+        "when Boost normally offers MP4/GIF download options, long-press should "
+        "show a native choice dialog before opening the system picker"
+    )
+    assert "resolveMediaSourceChoices" in source
+    assert "resolveMediaVideoDownloadChoices" in source
+    assert "showMediaSourceChooser" in source
+    assert "mediaSources.size() > 1" in source
+    assert '"MP4"' in source and '"GIF"' in source, (
+        "video choice dialog should expose Boost's MP4 and GIF alternatives"
+    )
+    assert 'stringField(owner, "f34768n")' in source, (
+        "MP4 choice should use Boost's current video URL field"
+    )
+    assert 'stringMethod(owner, "t2")' in source, (
+        "GIF choice should use Boost's private GIF URL resolver"
+    )
+
+
 def test_helper_resolves_boost_image_and_gallery_download_urls() -> None:
     source = read_required(HELPER_FILE)
 
@@ -291,6 +313,7 @@ if __name__ == "__main__":
     test_helper_uses_long_click_and_system_picker()
     test_helper_retries_toolbar_download_view_attachment()
     test_helper_derives_boost_reddit_video_download_urls()
+    test_helper_offers_mp4_gif_choice_before_system_picker()
     test_helper_resolves_boost_image_and_gallery_download_urls()
     test_helper_uses_boost_downloader_before_copying_to_picker_uri()
     test_patch_installs_helper_without_click_replacement()

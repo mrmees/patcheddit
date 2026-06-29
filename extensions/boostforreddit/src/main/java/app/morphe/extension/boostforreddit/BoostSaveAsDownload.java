@@ -8,6 +8,7 @@
 package app.morphe.extension.boostforreddit;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.ContextWrapper;
@@ -219,12 +220,41 @@ public final class BoostSaveAsDownload {
             return true;
         }
 
-        MediaSource mediaSource = resolveMediaSource(owner, activity.getIntent());
-        if (mediaSource == null) {
+        List<MediaSource> mediaSources = resolveMediaSourceChoices(owner, activity.getIntent());
+        if (mediaSources.isEmpty()) {
             showToast(activity, "Unable to find media URL");
             return true;
         }
 
+        if (mediaSources.size() > 1) {
+            showMediaSourceChooser(activity, mediaSources);
+            return true;
+        }
+
+        launchSavePicker(activity, mediaSources.get(0));
+        return true;
+    }
+
+    private static void showMediaSourceChooser(Activity activity, List<MediaSource> mediaSources) {
+        String[] labels = new String[mediaSources.size()];
+        for (int i = 0; i < mediaSources.size(); i++) {
+            labels[i] = labelForMediaSource(mediaSources.get(i));
+        }
+
+        new AlertDialog.Builder(activity)
+                .setTitle("Save as")
+                .setItems(labels, (dialog, which) -> {
+                    try {
+                        launchSavePicker(activity, mediaSources.get(which));
+                    } catch (Throwable t) {
+                        LoggingUtils.logException(false, () -> "Failed to choose Boost save-as source", t);
+                        showToast(activity, "Unable to save media");
+                    }
+                })
+                .show();
+    }
+
+    private static void launchSavePicker(Activity activity, MediaSource mediaSource) {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType(mediaSource.mimeType);
@@ -243,8 +273,34 @@ public final class BoostSaveAsDownload {
                 pendingSave = null;
             }
         }
+    }
 
-        return true;
+    private static List<MediaSource> resolveMediaSourceChoices(Object owner, Intent intent) {
+        List<MediaSource> mediaSources = resolveKnownMediaSourceChoices(owner);
+        if (!mediaSources.isEmpty()) {
+            return mediaSources;
+        }
+
+        MediaSource mediaSource = resolveMediaSource(owner, intent);
+        if (mediaSource == null) {
+            return Collections.emptyList();
+        }
+
+        return Collections.singletonList(mediaSource);
+    }
+
+    private static List<MediaSource> resolveKnownMediaSourceChoices(Object owner) {
+        if (owner == null) {
+            return Collections.emptyList();
+        }
+
+        String className = owner.getClass().getName();
+        if (className.endsWith(".MediaVideoActivity") || className.endsWith("$MediaVideoActivity")
+                || className.contains("MediaVideoActivity")) {
+            return resolveMediaVideoDownloadChoices(owner);
+        }
+
+        return Collections.emptyList();
     }
 
     private static MediaSource resolveMediaSource(Object owner, Intent intent) {
@@ -257,8 +313,7 @@ public final class BoostSaveAsDownload {
             return null;
         }
 
-        String fileName = fileNameForUrl(url);
-        return new MediaSource(url, fileName, mimeTypeForFileName(fileName, url));
+        return mediaSourceForUrl(url, null);
     }
 
     private static String resolveKnownMediaUrl(Object owner) {
@@ -336,6 +391,36 @@ public final class BoostSaveAsDownload {
                 stringMethod(owner, "v2"),
                 resolveBoostVideoDownloadUrl(owner, "f34737g", "f34779y", "f34767m", "C")
         );
+    }
+
+    private static List<MediaSource> resolveMediaVideoDownloadChoices(Object owner) {
+        List<MediaSource> mediaSources = new ArrayList<>();
+        int mediaMode = intField(owner, "f34767m", -1);
+        if (mediaMode == 0) {
+            addMediaSourceChoice(mediaSources, "MP4", stringField(owner, "f34768n"));
+            addMediaSourceChoice(mediaSources, "GIF", stringMethod(owner, "t2"));
+            if (!mediaSources.isEmpty()) {
+                return mediaSources;
+            }
+        }
+
+        addMediaSourceChoice(mediaSources, null, resolveMediaVideoDownloadUrl(owner));
+        return mediaSources;
+    }
+
+    private static void addMediaSourceChoice(List<MediaSource> mediaSources, String label, String candidate) {
+        String url = firstUsableMediaUrl(candidate);
+        if (url == null) {
+            return;
+        }
+
+        for (MediaSource mediaSource : mediaSources) {
+            if (mediaSource.url.equals(url)) {
+                return;
+            }
+        }
+
+        mediaSources.add(mediaSourceForUrl(url, label));
     }
 
     private static String resolveMediaImageDownloadUrl(Object owner) {
@@ -603,6 +688,19 @@ public final class BoostSaveAsDownload {
         return decoded.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_");
     }
 
+    private static MediaSource mediaSourceForUrl(String url, String label) {
+        String fileName = fileNameForUrl(url);
+        return new MediaSource(url, fileName, mimeTypeForFileName(fileName, url), label);
+    }
+
+    private static String labelForMediaSource(MediaSource mediaSource) {
+        if (mediaSource.label != null) {
+            return mediaSource.label;
+        }
+
+        return mediaSource.fileName;
+    }
+
     private static String extensionForUrl(String url) {
         String lower = url == null ? "" : url.toLowerCase(Locale.ROOT);
         if (lower.contains(".jpeg")) return ".jpg";
@@ -768,11 +866,13 @@ public final class BoostSaveAsDownload {
         final String url;
         final String fileName;
         final String mimeType;
+        final String label;
 
-        MediaSource(String url, String fileName, String mimeType) {
+        MediaSource(String url, String fileName, String mimeType, String label) {
             this.url = url;
             this.fileName = fileName;
             this.mimeType = mimeType;
+            this.label = label;
         }
     }
 
