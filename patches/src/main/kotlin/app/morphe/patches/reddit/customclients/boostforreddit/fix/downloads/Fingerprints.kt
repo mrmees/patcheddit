@@ -20,9 +20,23 @@ internal val exoActivityOnCreateFingerprint = Fingerprint(
     parameters = listOf("Landroid/os/Bundle;")
 )
 
+internal val exoActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/ExoActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
+)
+
 internal val mediaVideoActivityOnCreateFingerprint = Fingerprint(
     definingClass = "Lcom/rubenmayayo/reddit/ui/activities/MediaVideoActivity;",
     name = "onCreate",
     returnType = "V",
     parameters = listOf("Landroid/os/Bundle;")
+)
+
+internal val mediaVideoActivityOnCreateOptionsMenuFingerprint = Fingerprint(
+    definingClass = "Lcom/rubenmayayo/reddit/ui/activities/MediaVideoActivity;",
+    name = "onCreateOptionsMenu",
+    returnType = "Z",
+    parameters = listOf("Landroid/view/Menu;")
 )

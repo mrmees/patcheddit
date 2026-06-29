@@ -52,9 +52,16 @@ val saveAsMediaDownloadPatch = bytecodePatch(
             exoActivityOnCreateFingerprint to EXO_ACTIVITY_SUPERCLASS,
             mediaVideoActivityOnCreateFingerprint to MEDIA_VIDEO_ACTIVITY_SUPERCLASS
         )
+        val menuFingerprints = listOf(
+            exoActivityOnCreateOptionsMenuFingerprint,
+            mediaVideoActivityOnCreateOptionsMenuFingerprint
+        )
 
         activityFingerprints.forEach { (fingerprint, _) ->
             fingerprint.method.injectSaveAsInstallBeforeReturns()
+        }
+        menuFingerprints.forEach { fingerprint ->
+            fingerprint.method.injectSaveAsInstallAfterMenuInflation()
         }
 
         activityFingerprints
@@ -73,6 +80,25 @@ private fun MutableMethod.injectSaveAsInstallBeforeReturns() {
 
     check(returnIndices.isNotEmpty()) {
         "Expected at least one return-void in $definingClass->$name"
+    }
+
+    returnIndices.asReversed().forEach { index ->
+        addInstructions(
+            index,
+            """
+                invoke-static {p0}, $SAVE_AS_DOWNLOAD_EXTENSION_DESCRIPTOR->install(Ljava/lang/Object;)V
+            """
+        )
+    }
+}
+
+private fun MutableMethod.injectSaveAsInstallAfterMenuInflation() {
+    val returnIndices = implementation!!.instructions.withIndex()
+        .filter { (_, instruction) -> instruction.opcode == Opcode.RETURN }
+        .map { (index, _) -> index }
+
+    check(returnIndices.isNotEmpty()) {
+        "Expected at least one return in $definingClass->$name"
     }
 
     returnIndices.asReversed().forEach { index ->

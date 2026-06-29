@@ -136,6 +136,10 @@ def test_patch_installs_helper_without_click_replacement() -> None:
     assert "setOnClickListener" not in source, (
         "bytecode patch must not replace Boost's existing download click action"
     )
+    assert "injectSaveAsInstallAfterMenuInflation" in source, (
+        "patch should install after Boost inflates the action menu so the "
+        "download icon view exists before attaching the long-click listener"
+    )
 
 
 def test_patch_targets_boost_media_activity_on_create_methods() -> None:
@@ -154,6 +158,16 @@ def test_patch_targets_boost_media_activity_on_create_methods() -> None:
     assert 'name = "onCreate"' in source
     assert 'returnType = "V"' in source
     assert 'parameters = listOf("Landroid/os/Bundle;")' in source
+
+
+def test_patch_targets_boost_media_activity_menu_creation_methods() -> None:
+    source = read_required(FINGERPRINTS_FILE)
+
+    assert "exoActivityOnCreateOptionsMenuFingerprint" in source
+    assert "mediaVideoActivityOnCreateOptionsMenuFingerprint" in source
+    assert 'name = "onCreateOptionsMenu"' in source
+    assert 'returnType = "Z"' in source
+    assert 'parameters = listOf("Landroid/view/Menu;")' in source
 
 
 def test_patch_injects_install_before_every_return_in_reverse_order() -> None:
@@ -218,6 +232,7 @@ if __name__ == "__main__":
     test_helper_uses_boost_downloader_before_copying_to_picker_uri()
     test_patch_installs_helper_without_click_replacement()
     test_patch_targets_boost_media_activity_on_create_methods()
+    test_patch_targets_boost_media_activity_menu_creation_methods()
     test_patch_injects_install_before_every_return_in_reverse_order()
     test_patch_generates_activity_result_bridge_with_expected_superclasses()
     test_commit_does_not_track_temporary_or_apk_artifacts()
