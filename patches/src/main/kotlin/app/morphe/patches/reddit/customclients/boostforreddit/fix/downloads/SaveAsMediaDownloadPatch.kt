@@ -18,15 +18,19 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 private const val SAVE_AS_DOWNLOAD_EXTENSION_DESCRIPTOR =
     "Lapp/morphe/extension/boostforreddit/BoostSaveAsDownload;"
 
-private val ACTIVITY_RESULT_PARAMETERS = listOf(
+private val ACTIVITY_RESULT_PARAMETER_TYPES = listOf(
     "I",
     "I",
     "Landroid/content/Intent;"
 )
+private val ACTIVITY_RESULT_PARAMETERS = ACTIVITY_RESULT_PARAMETER_TYPES.map { type ->
+    ImmutableMethodParameter(type, null, null)
+}
 
 private const val EXO_ACTIVITY_SUPERCLASS =
     "Lcom/rubenmayayo/reddit/ui/activities/d;"
@@ -84,7 +88,7 @@ private fun MutableClass.injectSaveAsActivityResultHook(superclass: String) {
     val existing = methods.firstOrNull { method ->
         method.name == "onActivityResult" &&
             method.returnType == "V" &&
-            method.parameters.map { it.type } == ACTIVITY_RESULT_PARAMETERS
+            method.parameters.map { it.type } == ACTIVITY_RESULT_PARAMETER_TYPES
     }
 
     if (existing != null) {
@@ -101,7 +105,7 @@ private fun MutableClass.injectSaveAsActivityResultHook(superclass: String) {
             AccessFlags.PROTECTED.value,
             null,
             null,
-            MutableMethodImplementation(4)
+            MutableMethodImplementation(4).toImmutable()
         ).toMutable().apply {
             addInstructions(
                 0,

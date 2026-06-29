@@ -118,6 +118,15 @@ def test_patch_generates_activity_result_bridge_with_expected_superclasses() -> 
     assert "MutableMethodImplementation(4)" in source, (
         "generated onActivityResult needs p0-p3 registers"
     )
+    assert "ImmutableMethodParameter" in source, (
+        "generated methods must pass typed immutable parameters to dexlib"
+    )
+    assert "MutableMethodImplementation(4).toImmutable()" in source, (
+        "generated methods must pass an immutable implementation to dexlib"
+    )
+    assert "ACTIVITY_RESULT_PARAMETER_TYPES" in source, (
+        "existing method matching should compare parameter type descriptors"
+    )
     assert "Lcom/rubenmayayo/reddit/ui/activities/d;" in source, (
         "ExoActivity should delegate onActivityResult to its actual superclass"
     )
