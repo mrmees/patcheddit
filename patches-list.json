@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.10",
+  "version": "v1.4.11",
   "patches": [
     {
       "name": "Add archive links to context menu",
