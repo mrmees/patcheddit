@@ -64,6 +64,9 @@ def test_helper_uses_long_click_and_system_picker() -> None:
     assert "HttpUtils.get" in source, (
         "media should stream through the existing Boost extension HTTP client"
     )
+    assert "final boolean completed = success" in source, (
+        "logging lambda should capture a final success snapshot"
+    )
 
 
 def test_patch_installs_helper_without_click_replacement() -> None:

@@ -409,7 +409,8 @@ public final class BoostSaveAsDownload {
             LoggingUtils.logException(false, () -> "Failed to save Boost media as " + save.mimeType, t);
             showToast(context, "Unable to save media");
         } finally {
-            LoggingUtils.logInfo(success, () -> "Boost save-as download complete success=" + success);
+            final boolean completed = success;
+            LoggingUtils.logInfo(completed, () -> "Boost save-as download complete success=" + completed);
         }
     }
 
