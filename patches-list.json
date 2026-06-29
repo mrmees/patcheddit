@@ -1,5 +1,5 @@
 {
-  "version": "v1.4.6",
+  "version": "v1.4.7",
   "patches": [
     {
       "name": "Add archive links to context menu",
@@ -422,6 +422,20 @@
     {
       "name": "Request audio focus for Boost videos",
       "description": "Requests Android audio focus whenever Boost starts video playback.",
+      "use": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.rubenmayayo.reddit": [
+          "1.12.12"
+        ]
+      },
+      "options": []
+    },
+    {
+      "name": "Save Boost media as",
+      "description": "Long-presses Boost's media viewer download icon to save through Android's system picker.",
       "use": true,
       "dependencies": [
         "BytecodePatch"
